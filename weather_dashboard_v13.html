@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KFFZ Weather Evaluation Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --panel-bg: #1e1e1e;
+            --text-color: #e0e0e0;
+            --accent-color: #4da6ff;
+            --border-color: #333;
+            --btn-bg: #2d2d2d;
+            --btn-hover: #3d3d3d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .sidebar {
+            width: 250px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+
+        .sidebar h1 {
+            font-size: 1.2rem;
+            text-align: center;
+            margin-bottom: 20px;
+            color: var(--accent-color);
+            padding: 0 10px;
+        }
+
+        .nav-btn {
+            background: none;
+            border: none;
+            color: var(--text-color);
+            padding: 15px 20px;
+            text-align: left;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            border-left: 4px solid transparent;
+        }
+
+        .nav-btn:hover {
+            background-color: var(--btn-hover);
+        }
+
+        .nav-btn.active {
+            background-color: rgba(77, 166, 255, 0.1);
+            border-left-color: var(--accent-color);
+            color: var(--accent-color);
+            font-weight: bold;
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 30px;
+            position: relative;
+        }
+
+        .section {
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        h2 {
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-top: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .copy-btn {
+            background-color: #00c853;
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:hover {
+            background-color: #00e676;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+            align-items: stretch;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #aaa;
+        }
+
+        textarea, input[type="text"], input[type="date"], input[type="time"], .rich-textarea {
+            width: 100%;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px;
+            border-radius: 4px;
+            font-family: inherit;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+        
+        textarea {
+            min-height: 60px;
+        }
+
+        .rich-textarea {
+            min-height: 80px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+        }
+
+        textarea:focus, input:focus, .rich-textarea:focus {
+            outline: none;
+            border-color: var(--accent-color);
+        }
+
+        .iframe-container {
+            width: 100%;
+            height: 100%;
+            min-height: 600px;
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        .action-btn {
+            background-color: var(--accent-color);
+            color: #000;
+            font-weight: bold;
+            border: none;
+            padding: 4px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-left: 10px;
+            transition: opacity 0.2s;
+        }
+        
+        .action-btn:hover {
+            opacity: 0.8;
+        }
+
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 4px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+        }
+
+        #toast.show {
+            visibility: visible;
+            animation: fadein 0.5s, fadeout 0.5s 2.5s;
+        }
+
+        @keyframes fadein {
+            from {bottom: 0; opacity: 0;} 
+            to {bottom: 30px; opacity: 1;}
+        }
+
+        @keyframes fadeout {
+            from {bottom: 30px; opacity: 1;} 
+            to {bottom: 0; opacity: 0;}
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <h1>Flight Wx Dashboard</h1>
+        
+        <div style="padding: 0 20px 20px 20px;">
+            <div class="input-group" style="margin-bottom: 10px;">
+                <label>Date</label>
+                <input type="date" id="flight-date">
+            </div>
+            <div class="input-group" style="display: flex; gap: 10px;">
+                <div style="flex: 1;">
+                    <label>Start</label>
+                    <input type="time" id="flight-start">
+                </div>
+                <div style="flex: 1;">
+                    <label>End</label>
+                    <input type="time" id="flight-end">
+                </div>
+            </div>
+            <div style="font-size: 0.75rem; color: #888; text-align: center; margin-top: 5px;">
+                ※ Local Time (MST). TAF Highlights use UTC+7.
+            </div>
+        </div>
+
+        <button class="nav-btn active" onclick="showSection('sec1', this)">1. & 2. Pre-flight (Day Before)</button>
+        <button class="nav-btn" onclick="showSection('sec3', this)">3. Pre-flight (Just Before)</button>
+        <button class="nav-btn" onclick="showSection('sec4', this)">4. Post-flight</button>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        
+        <!-- Section 1 & 2: Day Before -->
+        <section id="sec1" class="section active">
+            <h2>
+                1. The Big Picture & 2. Local Conditions
+                <button class="copy-btn" onclick="exportSec12()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Copy Sec 1 & 2
+                </button>
+            </h2>
+            
+            <h3 style="color: var(--accent-color); border-bottom: 1px dotted var(--border-color); padding-bottom: 5px;">1. The Big Picture</h3>
+            <div class="dashboard-grid">
+                <div class="panel" style="padding: 0; background: transparent; border: none;">
+                    <div class="iframe-container">
+                        <iframe src="https://embed.windy.com/embed.html?type=map&location=coordinates&metricRain=mm&metricTemp=%C2%B0C&metricWind=kt&zoom=6&overlay=wind&product=ecmwf&level=surface&lat=34.216&lon=-111.141" allowfullscreen></iframe>
+                    </div>
+                </div>
+                <div class="panel">
+                    <div class="input-group">
+                        <label><a href="https://mag.ncep.noaa.gov/model-guidance-model-parameter.php?group=Model%20Guidance&model=NAM&area=NAMER&ps=area" target="_blank" style="color: var(--accent-color);">500hPa (約18k ft) トラフ/リッジ</a></label>
+                        <textarea id="val-500hpa"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label><a href="https://www.windy.com/?700h,rh,34.257,-110.729,6,i:pressure,p:cities" target="_blank" style="color: var(--accent-color);">700hPa (約10k ft) 湿度/水蒸気</a></label>
+                        <textarea id="val-700hpa"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label><a href="https://aviationweather.gov/gfa/?tab=winds&basemap=esriTerrain&layers=windbarb,cwa,nwshazards&center=34.185,-110.654&zoom=7&tz=local&windbarbsymbol=arrow&level=060" target="_blank" style="color: var(--accent-color);">850hPa (約5k ft) 下層の風/気温</a></label>
+                        <textarea id="val-850hpa"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label><a href="https://aviationweather.gov/gfa/?tab=progchart&basemap=esriTerrain&center=35.167,-111.008&zoom=6.25&tz=local&layers=prog" target="_blank" style="color: var(--accent-color);">Surface Analysis (地上の前線・気圧)</a></label>
+                        <textarea id="val-surface"></textarea>
+                    </div>
+                    <div style="border-top: 1px solid var(--border-color); margin: 20px 0; padding-top: 15px;">
+                        <label style="color:#aaa; font-size:0.9rem; margin-bottom: 10px; display:block;">Windy (GFS/ECMWF等) でのPHX周辺傾向</label>
+                        <div class="input-group"><label>ECMWF</label><textarea id="val-windy-ecmwf" rows="2"></textarea></div>
+                        <div class="input-group"><label>HRRR</label><textarea id="val-windy-hrrr" rows="2"></textarea></div>
+                        <div class="input-group"><label>前日予測まとめ (因果関係)</label><textarea id="val-big-summary" rows="3"></textarea></div>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="color: var(--accent-color); border-bottom: 1px dotted var(--border-color); padding-bottom: 5px; margin-top: 40px;">2. Local Conditions</h3>
+            <div class="dashboard-grid">
+                <div class="panel">
+                    <label style="color:#aaa; font-size:0.9rem; margin-bottom: 5px; display:flex; align-items:center;">
+                        TAF (Flight Time Highlight)
+                        <button class="action-btn" onclick="highlightTAF()">Apply Highlight</button>
+                    </label>
+                    <div style="font-size:0.8rem; color:#888; margin-bottom:15px;">
+                        ※ TAFをテキストエリアに貼り付けた後、「Apply Highlight」ボタンを押すとフライト時間が赤色になります。
+                    </div>
+                    
+                    <div class="input-group"><label><a href="https://aviationweather.gov/data/metar/?ids=KPHX&taf=1" target="_blank" style="color: var(--accent-color);">KPHX</a></label><div id="val-taf-phx" class="rich-textarea" contenteditable="true"></div></div>
+                    <div class="input-group"><label><a href="https://aviationweather.gov/data/metar/?ids=KIWA&taf=1" target="_blank" style="color: var(--accent-color);">KIWA</a></label><div id="val-taf-iwa" class="rich-textarea" contenteditable="true"></div></div>
+                    <div class="input-group"><label><a href="https://aviationweather.gov/data/metar/?ids=KSDL&taf=1" target="_blank" style="color: var(--accent-color);">KSDL</a></label><div id="val-taf-sdl" class="rich-textarea" contenteditable="true"></div></div>
+                    <div class="input-group"><label>TAF 全体概要</label><textarea id="val-taf-summary" rows="2"></textarea></div>
+                </div>
+                
+                <div class="panel">
+                    <div class="input-group"><label><a href="https://aviationweather.gov/gfa/?tab=clouds&basemap=esriDark&center=33.389,-111.794&zoom=9" target="_blank" style="color: var(--accent-color);">GFA 雲/降水/視程</a></label><textarea id="val-gfa"></textarea></div>
+                    <div class="input-group" style="display:flex; gap:10px;">
+                        <div style="flex:1"><label><a href="https://aviationweather.gov/gfa/?tab=winds&basemap=esriTerrain&center=33.448,-111.81&zoom=9.75&tz=local&layers=windbarb,cwa,nwshazards&level=060" target="_blank" style="color: var(--accent-color);">Winds Aloft 高度(ft)</a></label><input type="text" id="val-winds-alt"></div>
+                        <div style="flex:1"><label>風向 / 風速 (kt)</label><input type="text" id="val-winds-dirvel"></div>
+                    </div>
+                    <div class="input-group"><label><a href="https://www.windy.com/sounding/33.458/-111.726?cbase,33.453,-111.753,11,i:pressure,p:cities" target="_blank" style="color: var(--accent-color);">Skew-T / エマグラム (安定度・雲底)</a></label><textarea id="val-skewt"></textarea></div>
+                    
+                    <div class="input-group">
+                        <label><a href="https://forecast.weather.gov/product.php?site=PSR&issuedby=PSR&product=AFD&format=txt" target="_blank" style="color: var(--accent-color);">Area Forecast Discussions (Phoenix)</a></label>
+                        <textarea id="val-afd" rows="6"></textarea>
+                    </div>
+                    
+                    <div class="input-group"><label>前日予測まとめ (KFFZ周辺)</label><textarea id="val-local-summary" rows="3"></textarea></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: Pre-flight Check -->
+        <section id="sec3" class="section">
+            <h2>
+                3. Flight Pre-flight Check
+                <button class="copy-btn" onclick="exportSec3()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Copy Sec 3
+                </button>
+            </h2>
+            <div class="dashboard-grid">
+                <div class="panel">
+                    <label style="color:#aaa; font-size:0.9rem; margin-bottom: 5px; display:block; margin-top:10px;">METAR 状況</label>
+                    <div class="input-group"><label><a href="https://aviationweather.gov/data/metar/?ids=KFFZ&taf=1" target="_blank" style="color: #ff6b6b; font-weight:bold;">KFFZ</a></label><textarea id="val-metar-ffz" rows="2"></textarea></div>
+                    <div class="input-group"><label><a href="https://aviationweather.gov/data/metar/?ids=KPHX&taf=1" target="_blank" style="color: var(--accent-color);">KPHX</a></label><textarea id="val-metar-phx" rows="2"></textarea></div>
+                    <div class="input-group"><label><a href="https://aviationweather.gov/data/metar/?ids=KIWA&taf=1" target="_blank" style="color: var(--accent-color);">KIWA</a></label><textarea id="val-metar-iwa" rows="2"></textarea></div>
+                    <div class="input-group"><label><a href="https://aviationweather.gov/data/metar/?ids=KSDL&taf=1" target="_blank" style="color: var(--accent-color);">KSDL</a></label><textarea id="val-metar-sdl" rows="2"></textarea></div>
+                </div>
+
+                <div class="panel">
+                    <div class="input-group"><label><a href="https://aviationweather.gov/gfa/?tab=obs&prodType=ceil&basemap=esriDark&center=33.38,-111.297&zoom=9&layers=rad,metar,airep,prog&radproduct=cref" target="_blank" style="color: var(--accent-color);">Radar / Satellite (雷雨・雲の現在地)</a></label><textarea id="val-radar"></textarea></div>
+                    <div class="input-group"><label><a href="https://aviationweather.gov/gfa/?tab=obs&prodType=ceil&basemap=esriDark&center=33.38,-111.297&zoom=9&layers=rad,metar,airep,prog&radproduct=cref" target="_blank" style="color: var(--accent-color);">PIREPs (パイロットからの報告)</a></label><textarea id="val-pireps"></textarea></div>
+                    <div class="input-group"><label>AWOS/ATIS (最新の風向・風速)</label><textarea id="val-awos"></textarea></div>
+                    <div class="input-group"><label>Ceiling（4.4℉/1000ft, 2.0℃/1000ft 計算用）</label><textarea id="val-ceiling"></textarea></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 4: Prediction vs Reality -->
+        <section id="sec4" class="section">
+            <h2>
+                4. Prediction vs. Reality
+                <button class="copy-btn" onclick="exportSec4()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                    Copy Sec 4
+                </button>
+            </h2>
+            <div class="panel" style="max-width: 800px;">
+                <div class="input-group"><label>観測の結果 (実フライトでの体感など)</label><textarea id="val-obs-result" rows="4"></textarea></div>
+                <div class="input-group"><label>予測と実際のズレはあったか？ (風向、風速、雲の発生タイミングなど)</label><textarea id="val-diff" rows="4"></textarea></div>
+                <div class="input-group"><label>ズレの要因分析 (なぜ予測が外れた/当たったのか)</label><textarea id="val-analysis" rows="4"></textarea></div>
+            </div>
+        </section>
+
+    </div>
+    
+    <div id="toast">Copied for Google Docs!</div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('flight-date').valueAsDate = new Date();
+        });
+
+        function showSection(secId, btnElement) {
+            document.querySelectorAll('.section').forEach(sec => sec.classList.remove('active'));
+            document.getElementById(secId).classList.add('active');
+            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+        }
+
+        function getVal(id) {
+            const el = document.getElementById(id);
+            if (!el) return "";
+            if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT') {
+                return el.value ? el.value.trim() : "";
+            } else {
+                return el.innerText ? el.innerText.trim() : "";
+            }
+        }
+
+        function formatList(text) {
+            if (!text) return "";
+            // Replace literal newlines with HTML list items
+            return text.split('\\n').map(line => `<li>${line}</li>`).join('');
+        }
+
+        function getFlightUTCWindow() {
+            const dateStr = document.getElementById('flight-date').value;
+            const startStr = document.getElementById('flight-start').value;
+            const endStr = document.getElementById('flight-end').value;
+            
+            if(!dateStr || !startStr || !endStr) return null;
+            
+            const startLocal = new Date(`${dateStr}T${startStr}:00`);
+            const endLocal = new Date(`${dateStr}T${endStr}:00`);
+            
+            if (isNaN(startLocal.getTime()) || isNaN(endLocal.getTime())) return null;
+            
+            if (endLocal <= startLocal) {
+                endLocal.setDate(endLocal.getDate() + 1);
+            }
+            
+            const startUTC = new Date(startLocal.getTime() + (7 * 60 * 60 * 1000));
+            const endUTC = new Date(endLocal.getTime() + (7 * 60 * 60 * 1000));
+            
+            return { start: startUTC, end: endUTC };
+        }
+
+        function colorizeTAF(tafText) {
+            if (!tafText) return "";
+            const w = getFlightUTCWindow();
+            if (!w) return tafText;
+
+            // Normalize newlines and break blocks
+            let text = tafText.replace(/\\s+(FM\\d{6}|BECMG|TEMPO|PROB\\d{2})\\b/g, '\\n$1');
+            let lines = text.split('\\n').map(l => l.trim()).filter(l => l.length > 0);
+            
+            let blocks = [];
+            let baseDate = w.start; 
+            
+            for (let i = 0; i < lines.length; i++) {
+                let line = lines[i];
+                let startTime = null;
+                let endTime = null;
+                let isOverlay = false;
+                
+                if (line.startsWith('FM')) {
+                    let m = line.match(/FM(\\d{2})(\\d{2})/);
+                    if (m) {
+                        let d = new Date(baseDate); d.setUTCDate(parseInt(m[1])); d.setUTCHours(parseInt(m[2]), 0, 0, 0);
+                        startTime = d.getTime();
+                    }
+                } else if (line.match(/^(TEMPO|BECMG|PROB)/)) {
+                    isOverlay = true;
+                    let m = line.match(/(\\d{2})(\\d{2})\\/(\\d{2})(\\d{2})/);
+                    if (m) {
+                        let d1 = new Date(baseDate); d1.setUTCDate(parseInt(m[1])); d1.setUTCHours(parseInt(m[2]), 0, 0, 0);
+                        let d2 = new Date(baseDate); d2.setUTCDate(parseInt(m[3])); d2.setUTCHours(parseInt(m[4]), 0, 0, 0);
+                        if(d2 < d1) d2.setUTCMonth(d2.getUTCMonth() + 1);
+                        startTime = d1.getTime();
+                        endTime = d2.getTime();
+                    }
+                } else {
+                    let m = line.match(/(\\d{2})(\\d{2})\\/(\\d{2})(\\d{2})/);
+                    if (m) {
+                        let d1 = new Date(baseDate); d1.setUTCDate(parseInt(m[1])); d1.setUTCHours(parseInt(m[2]), 0, 0, 0);
+                        let d2 = new Date(baseDate); d2.setUTCDate(parseInt(m[3])); d2.setUTCHours(parseInt(m[4]), 0, 0, 0);
+                        if(d2 < d1) d2.setUTCMonth(d2.getUTCMonth() + 1);
+                        startTime = d1.getTime();
+                        endTime = d2.getTime();
+                    }
+                }
+                blocks.push({ line, startTime, endTime, isOverlay, isMatch: false });
+            }
+            
+            for (let i = 0; i < blocks.length; i++) {
+                if (!blocks[i].isOverlay && blocks[i].startTime && !blocks[i].endTime) {
+                    let nextFMTime = null;
+                    for (let j = i + 1; j < blocks.length; j++) {
+                        if (!blocks[j].isOverlay && blocks[j].startTime) {
+                            nextFMTime = blocks[j].startTime;
+                            break;
+                        }
+                    }
+                    if (nextFMTime) {
+                        blocks[i].endTime = nextFMTime;
+                    } else {
+                        blocks[i].endTime = blocks[0].endTime || (blocks[i].startTime + 24*3600*1000);
+                    }
+                }
+            }
+            
+            let fs = w.start.getTime();
+            let fe = w.end.getTime();
+            
+            for (let i = 0; i < blocks.length; i++) {
+                let b = blocks[i];
+                if (b.startTime && b.endTime) {
+                    if (fs < b.endTime && fe > b.startTime) {
+                        b.isMatch = true;
+                    }
+                } else if (i === 0) {
+                    if (b.endTime && fs < b.endTime && fe > b.startTime) {
+                        b.isMatch = true;
+                    }
+                }
+            }
+            
+            let resultHTML = [];
+            for (let i = 0; i < blocks.length; i++) {
+                if (blocks[i].isMatch) {
+                    resultHTML.push(`<span style="color: #ff6b6b; font-weight: bold;">${blocks[i].line}</span>`);
+                } else {
+                    resultHTML.push(blocks[i].line);
+                }
+            }
+            
+            return resultHTML.join('<br>'); // For rich textarea rendering
+        }
+
+        function highlightTAF() {
+            ['phx', 'iwa', 'sdl'].forEach(station => {
+                const el = document.getElementById('val-taf-' + station);
+                if (el) {
+                    // Get raw text from the contenteditable div, ignoring previous tags
+                    const plainText = el.innerText || "";
+                    if (plainText.trim() !== "") {
+                        el.innerHTML = colorizeTAF(plainText);
+                    }
+                }
+            });
+        }
+
+        function getHeaderHTML() {
+            const date = document.getElementById('flight-date').value.replace(/-/g, '_') || "202X_MM_DD";
+            const start = document.getElementById('flight-start').value || "HH:MM";
+            const end = document.getElementById('flight-end').value || "HH:MM";
+            return `
+                <h1 style="font-size: 18pt;">Weather Evaluation</h1>
+                <ul>
+                    <li>日付：${date}</li>
+                    <li>時間：${start} ~ ${end}</li>
+                </ul>
+            `;
+        }
+
+        async function exportSec12() {
+            const htmlContent = `
+            <div style="font-family: Arial, sans-serif; color: #000;">
+                ${getHeaderHTML()}
+                <h2 style="font-size: 14pt;">1. The Big Picture (広域の気圧配置と上空の流れ)</h2>
+                <p><i>記入タイミング：前日</i></p>
+                <ul>
+                    <li><a href="https://mag.ncep.noaa.gov/model-guidance-model-parameter.php?group=Model%20Guidance&model=NAM&area=NAMER&ps=area">500hPa (約18k ft) トラフ/リッジ</a><ul><li>${getVal('val-500hpa')}</li></ul></li>
+                    <li><a href="https://www.windy.com/?700h,rh,34.257,-110.729,6,i:pressure,p:cities">700hPa (約10k ft) 湿度/水蒸気</a><ul><li>${getVal('val-700hpa')}</li></ul></li>
+                    <li><a href="https://aviationweather.gov/gfa/?tab=winds&basemap=esriTerrain&layers=windbarb,cwa,nwshazards&center=34.185,-110.654&zoom=7&tz=local&windbarbsymbol=arrow&level=060">850hPa (約5k ft) 下層の風/気温</a><ul><li>${getVal('val-850hpa')}</li></ul></li>
+                    <li><a href="https://aviationweather.gov/gfa/?tab=progchart&basemap=esriTerrain&center=35.167,-111.008&zoom=6.25&tz=local&layers=prog">Surface Analysis (地上の前線・気圧)</a><ul><li>${getVal('val-surface')}</li></ul></li>
+                    <li><b>Windy (GFS/ECMWF等) でのPHX周辺の全体傾向</b>
+                        <ul>
+                            <li>ECMWFは<ul>${formatList(getVal('val-windy-ecmwf'))}</ul></li>
+                            <li>HRRRは<ul>${formatList(getVal('val-windy-hrrr'))}</ul></li>
+                        </ul>
+                    </li>
+                    <li>前日予測まとめ (因果関係)<ul>${formatList(getVal('val-big-summary'))}</ul></li>
+                </ul>
+
+                <h2 style="font-size: 14pt;">2. Local Conditions (KFFZ周辺の局地予測)</h2>
+                <p><i>記入タイミング：前日</i></p>
+                <ul>
+                    <li>TAF
+                        <ul>
+                            <li><a href="https://aviationweather.gov/data/metar/?ids=KPHX&taf=1">KPHX</a><ul>${formatList(getVal('val-taf-phx'))}</ul></li>
+                            <li><a href="https://aviationweather.gov/data/metar/?ids=KIWA&taf=1">KIWA</a><ul>${formatList(getVal('val-taf-iwa'))}</ul></li>
+                            <li><a href="https://aviationweather.gov/data/metar/?ids=KSDL&taf=1">KSDL</a><ul>${formatList(getVal('val-taf-sdl'))}</ul></li>
+                            <li>全体概要<ul>${formatList(getVal('val-taf-summary'))}</ul></li>
+                        </ul>
+                    </li>
+                    <li><a href="https://aviationweather.gov/gfa/?tab=clouds&basemap=esriDark&center=33.389,-111.794&zoom=9">GFAによる雲/降水/視程の予測</a><ul><li>${getVal('val-gfa')}</li></ul></li>
+                    <li><a href="https://aviationweather.gov/gfa/?tab=winds&basemap=esriTerrain&center=33.448,-111.81&zoom=9.75&tz=local&layers=windbarb,cwa,nwshazards&level=060">Winds Aloft</a> (フライト高度)<ul><li>高度 [ ${getVal('val-winds-alt')} ] ft: 風向/風速 [ ${getVal('val-winds-dirvel')} ] kt</li></ul></li>
+                    <li><a href="https://www.windy.com/sounding/33.458/-111.726?cbase,33.453,-111.753,11,i:pressure,p:cities">Skew-T / エマグラム (大気の安定度・雲底予測)</a><ul><li>${getVal('val-skewt')}</li></ul></li>
+                    <li><a href="https://forecast.weather.gov/product.php?site=PSR&issuedby=PSR&product=AFD&format=txt">Area Forecast Discussions</a><ul><li>${getVal('val-afd')}</li></ul></li>
+                    <li>前日予測まとめ (KFFZ周辺)<ul>${formatList(getVal('val-local-summary'))}</ul></li>
+                </ul>
+            </div>`;
+            executeCopy(htmlContent);
+        }
+
+        async function exportSec3() {
+            const htmlContent = `
+            <div style="font-family: Arial, sans-serif; color: #000;">
+                <h2 style="font-size: 14pt;">3. Flight Pre-flight Check (直前の実況値確認)</h2>
+                <p><i>記入タイミング：フライト直前</i></p>
+                <ul>
+                    <li>METAR
+                        <ul>
+                            <li><a href="https://aviationweather.gov/data/metar/?ids=KFFZ&taf=1">KFFZ</a><ul>${formatList(getVal('val-metar-ffz'))}</ul></li>
+                            <li><a href="https://aviationweather.gov/data/metar/?ids=KPHX&taf=1">KPHX</a><ul>${formatList(getVal('val-metar-phx'))}</ul></li>
+                            <li><a href="https://aviationweather.gov/data/metar/?ids=KIWA&taf=1">KIWA</a><ul>${formatList(getVal('val-metar-iwa'))}</ul></li>
+                            <li><a href="https://aviationweather.gov/data/metar/?ids=KSDL&taf=1">KSDL</a><ul>${formatList(getVal('val-metar-sdl'))}</ul></li>
+                        </ul>
+                    </li>
+                    <li><a href="https://aviationweather.gov/gfa/?tab=obs&prodType=ceil&basemap=esriDark&center=33.38,-111.297&zoom=9&layers=rad,metar,airep,prog&radproduct=cref">Radar / Satellite (雷雨・雲の現在地)</a><ul><li>${getVal('val-radar')}</li></ul></li>
+                    <li><a href="https://aviationweather.gov/gfa/?tab=obs&prodType=ceil&basemap=esriDark&center=33.38,-111.297&zoom=9&layers=rad,metar,airep,prog&radproduct=cref">PIREPs (パイロットからの報告)</a><ul><li>${getVal('val-pireps')}</li></ul></li>
+                    <li>AWOS/ATIS (最新の風向・風速)<ul><li>${getVal('val-awos')}</li></ul></li>
+                    <li>Ceiling（4.4℉/1000ft, 2.0℃/1000ft）<ul><li>${getVal('val-ceiling')}</li></ul></li>
+                </ul>
+            </div>`;
+            executeCopy(htmlContent);
+        }
+
+        async function exportSec4() {
+            const htmlContent = `
+            <div style="font-family: Arial, sans-serif; color: #000;">
+                <h2 style="font-size: 14pt;">4. Prediction vs. Reality (予測と結果の比較)</h2>
+                <p><i>記入タイミング：フライト直前 または フライト後</i></p>
+                <ul>
+                    <li>観測の結果<ul>${formatList(getVal('val-obs-result'))}</ul></li>
+                    <li>予測と実際のズレはあったか？ (風向、風速、雲の発生タイミングなど)<ul>${formatList(getVal('val-diff'))}</ul></li>
+                    <li>ズレの要因分析 (なぜ予測が外れた/当たったのか)<ul>${formatList(getVal('val-analysis'))}</ul></li>
+                </ul>
+            </div>`;
+            executeCopy(htmlContent);
+        }
+
+        async function executeCopy(htmlContent) {
+            function showToast() {
+                const toast = document.getElementById("toast");
+                toast.className = "show";
+                setTimeout(function(){ toast.className = toast.className.replace("show", ""); }, 3000);
+            }
+
+            try {
+                const blobHtml = new Blob([htmlContent], { type: "text/html" });
+                const blobText = new Blob(["Please paste this in Google Docs. (Rich Text is active in your clipboard)"], { type: "text/plain" });
+                const clipboardItem = new ClipboardItem({
+                    "text/html": blobHtml,
+                    "text/plain": blobText
+                });
+                await navigator.clipboard.write([clipboardItem]);
+                showToast();
+            } catch (err) {
+                try {
+                    const div = document.createElement("div");
+                    div.innerHTML = htmlContent;
+                    div.style.position = "absolute";
+                    div.style.left = "-9999px";
+                    document.body.appendChild(div);
+                    
+                    const range = document.createRange();
+                    range.selectNodeContents(div);
+                    const sel = window.getSelection();
+                    sel.removeAllRanges();
+                    sel.addRange(range);
+                    
+                    document.execCommand("copy");
+                    sel.removeAllRanges();
+                    document.body.removeChild(div);
+                    showToast();
+                } catch (fallbackErr) {
+                    console.error("Copy failed", fallbackErr);
+                    alert("クリップボードへのコピーに失敗しました。");
+                }
+            }
+        }
+    </script>
+</body>
+</html>
